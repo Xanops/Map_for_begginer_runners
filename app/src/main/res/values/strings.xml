@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Map for beginner runners</string>
+    <string name="unknown_error_message">unknown_search_error</string>
+    <string name="remote_error_message">search_remote_error</string>
+    <string name="network_error_message">search_network_error</string>
+    <string name="search_hint" />
+</resources>
