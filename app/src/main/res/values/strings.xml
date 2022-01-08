@@ -4,4 +4,5 @@
     <string name="remote_error_message">search_remote_error</string>
     <string name="network_error_message">search_network_error</string>
     <string name="search_hint" />
+    <string name="searching_hint">Поиск мест и адресов</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.example.mapforbeginnerrunners
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
@@ -47,7 +48,21 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
         SearchFactory.initialize(this)
 
         setContentView(R.layout.activity_main)
-        mapview = findViewById<MapView>(R.id.mapview)
+
+        searchEdit = findViewById(R.id.search_manager)
+        searchEdit.setOnClickListener {
+            searchEdit.isCursorVisible = true }
+
+        //TODO: исчезает курсор при нажатии кнопки Enter
+        searchEdit.setOnEditorActionListener { v, actionId, event ->
+            if (event != null && (event.keyCode == KeyEvent.KEYCODE_ENTER)) {
+                searchEdit.isCursorVisible = false
+                }
+            false
+        }
+
+
+        mapview = findViewById(R.id.mapview)
         mapview.map.move(
             CameraPosition(Point(55.751574, 37.573856), 11.0f, 0.0f, 0.0f),
             Animation(Animation.Type.SMOOTH, 0.toFloat()),
