@@ -1,9 +1,11 @@
 package com.example.mapforbeginnerrunners
 
+import android.content.Context
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,12 +37,15 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
             this)
     }
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val MAPKIT_API_KEY: String =
                 applicationContext.assets.open("MAPKIT_KEY.txt").bufferedReader().use {
                     it.readText() }
+        var flag = true
 
         MapKitFactory.setApiKey(MAPKIT_API_KEY)
 
@@ -51,16 +56,11 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
 
         searchEdit = findViewById(R.id.search_manager)
         searchEdit.setOnClickListener {
-            searchEdit.isCursorVisible = true }
-
-        //TODO: исчезает курсор при нажатии кнопки Enter
-        searchEdit.setOnEditorActionListener { v, actionId, event ->
-            if (event != null && (event.keyCode == KeyEvent.KEYCODE_ENTER)) {
-                searchEdit.isCursorVisible = false
-                }
-            false
+            if (flag) {
+                searchEdit.isCursorVisible = true
+            }
+            flag = true
         }
-
 
         mapview = findViewById(R.id.mapview)
         mapview.map.move(
@@ -72,7 +72,15 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
         searchEdit = findViewById<View>(R.id.search_manager) as EditText
         searchEdit.setOnEditorActionListener { textView, actionId, keyEvent ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                submitQuery(searchEdit.text.toString()) }
+                submitQuery(searchEdit.text.toString())
+                searchEdit.isCursorVisible = false
+
+                val klaviatura: InputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE)
+                        as InputMethodManager
+                klaviatura.hideSoftInputFromWindow(searchEdit.windowToken,
+                                                   InputMethodManager.HIDE_NOT_ALWAYS)
+                flag = false
+                }
             false
         }
         submitQuery(searchEdit.text.toString())
