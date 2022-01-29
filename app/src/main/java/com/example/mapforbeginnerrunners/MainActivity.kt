@@ -2,18 +2,19 @@ package com.example.mapforbeginnerrunners
 
 import android.content.Context
 import android.os.Bundle
-import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
-import com.yandex.mapkit.map.CameraPosition
-import com.yandex.mapkit.map.VisibleRegionUtils
+import com.yandex.mapkit.layers.GeoObjectTapEvent
+import com.yandex.mapkit.layers.GeoObjectTapListener
+import com.yandex.mapkit.map.SizeChangedListener
+import com.yandex.mapkit.map.*
+import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.search.*
 import com.yandex.runtime.Error
@@ -26,18 +27,48 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
 
     private lateinit var mapview: MapView
     private lateinit var searchManager: SearchManager
-    private lateinit var searchEdit: EditText
-    private lateinit var searchSession: Session
+    private lateinit var startingPoint_searchEditText: EditText
+    private lateinit var endPoint_searchEditText: EditText
+    private val TARGET_LOCATION = Point(59.936760, 30.314673)
+    var last_search_query = ""
+    //private lateinit var linearLayout: LinearLayout
+    //private lateinit var linearLayout2: LinearLayout
 
     private fun submitQuery(query: String = "") {
-        searchSession = searchManager.submit(
-            query,
-            VisibleRegionUtils.toPolygon(mapview.map.visibleRegion),
-            SearchOptions(),
-            this)
+        searchManager.submit( query,
+                              VisibleRegionUtils.toPolygon(mapview.map.visibleRegion),
+                              SearchOptions(),
+                              this)
+        last_search_query = query
     }
 
 
+    // Недоделанная функция для того, чтобы 2 LinearLayouts делили экран по ширине пополам
+
+    /*private fun set_LinearLayouts_width() {
+        val display: Display = windowManager.defaultDisplay
+        val size: android.graphics.Point = android_point()
+        display.getSize(size)
+        val windowWidth = size.x
+        // val windowHeight = size.y
+
+
+        val linearLayout_size: RelativeLayout.LayoutParams = RelativeLayout.LayoutParams(windowWidth / 2, 100)
+        //linearLayout_size.addRule()
+        linearLayout.layoutParams = linearLayout_size
+        linearLayout2.layoutParams = linearLayout_size
+
+
+        val constraintLayout: ConstraintLayout = findViewById(R.id.activity_main)
+        val constraintSet = ConstraintSet()
+        var mConstraintLayout: ConstraintLayout
+        constraintSet.connect(R.id.linearLayout2, ConstraintSet.END,
+                              R.id.activity_main, ConstraintSet.END)
+        constraintSet.connect(R.id.linearLayout2, ConstraintSet.TOP,
+                              R.id.activity_main, ConstraintSet.TOP)
+        constraintSet.applyTo(constraintLayout)
+
+    }*/
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,7 +76,6 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
         val MAPKIT_API_KEY: String =
                 applicationContext.assets.open("MAPKIT_KEY.txt").bufferedReader().use {
                     it.readText() }
-        var flag = true
 
         MapKitFactory.setApiKey(MAPKIT_API_KEY)
 
@@ -54,36 +84,67 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
 
         setContentView(R.layout.activity_main)
 
-        searchEdit = findViewById(R.id.search_manager)
-        searchEdit.setOnClickListener {
-            if (flag) {
-                searchEdit.isCursorVisible = true
-            }
-            flag = true
+        //linearLayout = findViewById(R.id.linearLayout)
+        //linearLayout2 = findViewById(R.id.linearLayout2)
+        //set_LinearLayouts_width()
+
+        val klaviatura: InputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE)
+                as InputMethodManager
+
+        startingPoint_searchEditText = findViewById(R.id.starting_point_search_manager)
+        endPoint_searchEditText = findViewById(R.id.end_point_search_manager)
+        startingPoint_searchEditText.setOnClickListener { startingPoint_searchEditText.isCursorVisible = true }
+        endPoint_searchEditText.setOnClickListener { endPoint_searchEditText.isCursorVisible = true }
+
+
+        val editTextClickListener: View.OnClickListener = View.OnClickListener { v ->
+                startingPoint_searchEditText.isCursorVisible = true
         }
 
-        mapview = findViewById(R.id.mapview)
+        startingPoint_searchEditText.setOnClickListener(editTextClickListener)
+
+
+        mapview = findViewById<View>(R.id.mapview) as MapView
+        mapview.requestFocus()
+//        mapview.addSizeChangedListener(sizeChangedListener())
+
+        // And to show what can be done with it, we move the camera to the center of Saint Petersburg.
         mapview.map.move(
-            CameraPosition(Point(55.751574, 37.573856), 11.0f, 0.0f, 0.0f),
-            Animation(Animation.Type.SMOOTH, 0.toFloat()),
-            null)
-
+            CameraPosition(TARGET_LOCATION, 17.0f, 0.0f, 0.0f),
+            Animation(Animation.Type.SMOOTH, 1F),
+            null
+        )
+        //mapview.map.addTapListener(this)
+        //mapview.map.addInputListener(this)
+        
+        
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
-        searchEdit = findViewById<View>(R.id.search_manager) as EditText
-        searchEdit.setOnEditorActionListener { textView, actionId, keyEvent ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                submitQuery(searchEdit.text.toString())
-                searchEdit.isCursorVisible = false
 
-                val klaviatura: InputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE)
-                        as InputMethodManager
-                klaviatura.hideSoftInputFromWindow(searchEdit.windowToken,
+        startingPoint_searchEditText.setOnEditorActionListener { textView, actionId, keyEvent ->
+            startingPoint_searchEditText.isCursorVisible = true
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                submitQuery(startingPoint_searchEditText.text.toString())
+                startingPoint_searchEditText.isCursorVisible = false
+                mapview.requestFocus()
+
+                klaviatura.hideSoftInputFromWindow(startingPoint_searchEditText.windowToken,
                                                    InputMethodManager.HIDE_NOT_ALWAYS)
-                flag = false
                 }
             false
         }
-        submitQuery(searchEdit.text.toString())
+
+        endPoint_searchEditText.setOnEditorActionListener { textView, actionId, keyEvent ->
+            endPoint_searchEditText.isCursorVisible = true
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                submitQuery(endPoint_searchEditText.text.toString())
+                endPoint_searchEditText.isCursorVisible = false
+                mapview.requestFocus()
+
+                klaviatura.hideSoftInputFromWindow(endPoint_searchEditText.windowToken,
+                    InputMethodManager.HIDE_NOT_ALWAYS)
+            }
+            false
+        }
     }
 
     override fun onSearchResponse(response: Response) {
@@ -122,4 +183,24 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
         mapview.onStart()
         MapKitFactory.getInstance().onStart()
     }
+
+    fun onObjectTap(geoObjectTapEvent: GeoObjectTapEvent): Boolean {
+        val selectionMetadata = geoObjectTapEvent
+            .geoObject
+            .metadataContainer
+            .getItem(GeoObjectSelectionMetadata::class.java)
+        if (selectionMetadata != null) {
+            mapview.map.selectGeoObject(selectionMetadata.id, selectionMetadata.layerId)
+        }
+        return selectionMetadata != null
+    }
+
+    fun onMapTap(map: Map, point: Point) {
+        mapview.map.deselectGeoObject()
+    }
+
+    fun onMapLongTap(map: Map, point: Point) {
+        // TODO document why this method is empty
+    }
+    
 }

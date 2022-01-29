@@ -2,49 +2,104 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
     <com.yandex.mapkit.mapview.MapView
         android:id="@+id/mapview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/white"
-        android:orientation="horizontal"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <EditText
-            android:id="@+id/search_manager"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+        <requestFocus />
+    </com.yandex.mapkit.mapview.MapView>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:baselineAligned="false">
+
+        <LinearLayout
+            android:id="@+id/linearLayout"
             android:layout_weight="1"
-            android:clickable="true"
-            android:cursorVisible="false"
-            android:focusable="true"
-            android:hapticFeedbackEnabled="true"
-            android:hint="@string/searching_hint"
-            android:imeOptions="actionSearch"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:keepScreenOn="true"
-            android:maxLines="1"
-            android:nestedScrollingEnabled="true"
-            android:scrollbarAlwaysDrawHorizontalTrack="false"
-            android:scrollbarAlwaysDrawVerticalTrack="false"
-            android:scrollbars="none"
-            android:scrollHorizontally="true"
-            android:text="@string/search_hint"
-            android:textColor="@color/black"
-            android:textColorHint="#6E6D6D"
-            android:textIsSelectable="true"
-            tools:ignore="LabelFor,SpeakableTextPresentCheck" />
+            android:layout_width="0dp"
+            android:layout_height="45dp"
+            android:background="@color/white"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/end_point_search_manager"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:cursorVisible="false"
+                android:hapticFeedbackEnabled="true"
+                android:hint="@string/starting_point_searching_hint"
+                android:imeOptions="actionSearch"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:keepScreenOn="true"
+                android:maxLines="1"
+                android:nestedScrollingEnabled="true"
+                android:scrollbarAlwaysDrawHorizontalTrack="false"
+                android:scrollbarAlwaysDrawVerticalTrack="false"
+                android:scrollbars="none"
+                android:scrollHorizontally="true"
+                android:text="@string/search_hint"
+                android:textColor="@color/black"
+                android:textColorHint="#6E6D6D"
+                android:textIsSelectable="true"
+                tools:ignore="LabelFor,SpeakableTextPresentCheck" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/linearLayout2"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="45dp"
+            android:background="@color/white"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/starting_point_search_manager"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:cursorVisible="false"
+                android:hapticFeedbackEnabled="true"
+                android:hint="@string/end_point_searching_hint"
+                android:imeOptions="actionSearch"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:keepScreenOn="true"
+                android:maxLines="1"
+                android:nestedScrollingEnabled="true"
+                android:scrollbarAlwaysDrawHorizontalTrack="false"
+                android:scrollbarAlwaysDrawVerticalTrack="false"
+                android:scrollbars="none"
+                android:scrollHorizontally="true"
+                android:text="@string/search_hint"
+                android:textColor="@color/black"
+                android:textColorHint="#6E6D6D"
+                android:textIsSelectable="true"
+                tools:ignore="LabelFor,SpeakableTextPresentCheck" />
+        </LinearLayout>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
