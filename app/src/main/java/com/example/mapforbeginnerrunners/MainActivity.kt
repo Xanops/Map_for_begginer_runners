@@ -1,5 +1,6 @@
 package com.example.mapforbeginnerrunners
 
+// import com.yandex.mapkit.map.SizeChangedListener
 import android.content.Context
 import android.os.Bundle
 import android.view.View
@@ -12,7 +13,6 @@ import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.layers.GeoObjectTapEvent
 import com.yandex.mapkit.layers.GeoObjectTapListener
-import com.yandex.mapkit.map.SizeChangedListener
 import com.yandex.mapkit.map.*
 import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
@@ -23,14 +23,15 @@ import com.yandex.runtime.network.NetworkError
 import com.yandex.runtime.network.RemoteError
 
 
-class MainActivity : AppCompatActivity(), Session.SearchListener {
+class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapListener,
+    InputListener {
 
     private lateinit var mapview: MapView
     private lateinit var searchManager: SearchManager
     private lateinit var startingPoint_searchEditText: EditText
     private lateinit var endPoint_searchEditText: EditText
     private val TARGET_LOCATION = Point(59.936760, 30.314673)
-    var last_search_query = ""
+    private var last_search_query = ""
     //private lateinit var linearLayout: LinearLayout
     //private lateinit var linearLayout2: LinearLayout
 
@@ -114,8 +115,8 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
             Animation(Animation.Type.SMOOTH, 1F),
             null
         )
-        //mapview.map.addTapListener(this)
-        //mapview.map.addInputListener(this)
+        mapview.map.addTapListener(this)
+        mapview.map.addInputListener(this)
         
         
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
@@ -184,7 +185,7 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
         MapKitFactory.getInstance().onStart()
     }
 
-    fun onObjectTap(geoObjectTapEvent: GeoObjectTapEvent): Boolean {
+    override fun onObjectTap(geoObjectTapEvent: GeoObjectTapEvent): Boolean {
         val selectionMetadata = geoObjectTapEvent
             .geoObject
             .metadataContainer
@@ -195,12 +196,12 @@ class MainActivity : AppCompatActivity(), Session.SearchListener {
         return selectionMetadata != null
     }
 
-    fun onMapTap(map: Map, point: Point) {
+    override fun onMapTap(map: Map, point: Point) {
         mapview.map.deselectGeoObject()
     }
 
-    fun onMapLongTap(map: Map, point: Point) {
+    override fun onMapLongTap(map: Map, point: Point) {
         // TODO document why this method is empty
     }
-    
+
 }
