@@ -7,34 +7,57 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <!--androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <FrameLayout
+            android:id="@+id/standard_bottom_sheet"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"></TextView>
+        </FrameLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout-->
+
+
     <com.yandex.mapkit.mapview.MapView
         android:id="@+id/mapview"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:focusable="true"
         android:focusableInTouchMode="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="SpeakableTextPresentCheck">
 
         <requestFocus />
+
     </com.yandex.mapkit.mapview.MapView>
 
     <LinearLayout
+        android:id="@+id/linearLayout4"
         android:layout_width="0dp"
         android:layout_height="50dp"
+        android:baselineAligned="false"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:baselineAligned="false">
+        app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:id="@+id/linearLayout"
-            android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="45dp"
+            android:layout_weight="1"
             android:background="@color/white"
             android:orientation="horizontal">
 
@@ -43,9 +66,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:clickable="true"
+                android:cursorVisible="false"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
-                android:cursorVisible="false"
                 android:hapticFeedbackEnabled="true"
                 android:hint="@string/starting_point_searching_hint"
                 android:imeOptions="actionSearch"
@@ -67,9 +90,9 @@
 
         <LinearLayout
             android:id="@+id/linearLayout2"
-            android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="45dp"
+            android:layout_weight="1"
             android:background="@color/white"
             android:orientation="horizontal">
 
@@ -78,9 +101,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:clickable="true"
+                android:cursorVisible="false"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
-                android:cursorVisible="false"
                 android:hapticFeedbackEnabled="true"
                 android:hint="@string/end_point_searching_hint"
                 android:imeOptions="actionSearch"

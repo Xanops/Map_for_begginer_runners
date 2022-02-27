@@ -1,6 +1,5 @@
 package com.example.mapforbeginnerrunners
 
-// import com.yandex.mapkit.map.SizeChangedListener
 import android.content.Context
 import android.os.Bundle
 import android.view.View
@@ -8,6 +7,8 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
@@ -24,7 +25,7 @@ import com.yandex.runtime.network.RemoteError
 
 
 class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapListener,
-    InputListener {
+    InputListener, CameraListener {
 
     private lateinit var mapview: MapView
     private lateinit var searchManager: SearchManager
@@ -35,14 +36,8 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
     //private lateinit var linearLayout: LinearLayout
     //private lateinit var linearLayout2: LinearLayout
 
-    private fun submitQuery(query: String = "") {
-        searchManager.submit( query,
-                              VisibleRegionUtils.toPolygon(mapview.map.visibleRegion),
-                              SearchOptions(),
-                              this)
-        last_search_query = query
-    }
-
+    private val modalBottomSheet = ModalBottomSheet()
+    // private val modalBottomSheetBehavior = (modalBottomSheet.dialog as BottomSheetDialog).behavior
 
     // Недоделанная функция для того, чтобы 2 LinearLayouts делили экран по ширине пополам
 
@@ -84,6 +79,7 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
         SearchFactory.initialize(this)
 
         setContentView(R.layout.activity_main)
+        // modalBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
 
         //linearLayout = findViewById(R.id.linearLayout)
         //linearLayout2 = findViewById(R.id.linearLayout2)
@@ -107,7 +103,9 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
 
         mapview = findViewById<View>(R.id.mapview) as MapView
         mapview.requestFocus()
-//        mapview.addSizeChangedListener(sizeChangedListener())
+        mapview.map.addTapListener(this)
+        mapview.map.addInputListener(this)
+        mapview.map.addCameraListener(this)
 
         // And to show what can be done with it, we move the camera to the center of Saint Petersburg.
         mapview.map.move(
@@ -115,8 +113,6 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
             Animation(Animation.Type.SMOOTH, 1F),
             null
         )
-        mapview.map.addTapListener(this)
-        mapview.map.addInputListener(this)
         
         
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
@@ -146,6 +142,14 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
             }
             false
         }
+    }
+
+    private fun submitQuery(query: String = "") {
+        searchManager.submit( query,
+            VisibleRegionUtils.toPolygon(mapview.map.visibleRegion),
+            SearchOptions(),
+            this)
+        last_search_query = query
     }
 
     override fun onSearchResponse(response: Response) {
@@ -192,6 +196,7 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
             .getItem(GeoObjectSelectionMetadata::class.java)
         if (selectionMetadata != null) {
             mapview.map.selectGeoObject(selectionMetadata.id, selectionMetadata.layerId)
+            modalBottomSheet.show(supportFragmentManager, ModalBottomSheet.TAG)
         }
         return selectionMetadata != null
     }
@@ -202,6 +207,12 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
 
     override fun onMapLongTap(map: Map, point: Point) {
         // TODO document why this method is empty
+    }
+
+    override fun onCameraPositionChanged(p0: Map, p1: CameraPosition, p2: CameraUpdateReason,
+                                         finished: Boolean)
+    {
+        if (finished) submitQuery(last_search_query)
     }
 
 }

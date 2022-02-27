@@ -6,4 +6,5 @@
     <string name="search_hint" />
     <string name="starting_point_searching_hint">Введите начальную точку</string>
     <string name="end_point_searching_hint">Введите конечную точку</string>
+    <string name="nothing">Nothing</string>
 </resources>
