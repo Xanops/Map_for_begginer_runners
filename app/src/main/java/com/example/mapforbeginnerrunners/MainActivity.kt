@@ -5,34 +5,56 @@ import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.*
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomsheet.BottomSheetBehavior
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.RequestPoint
+import com.yandex.mapkit.RequestPointType
 import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.geometry.Polyline
+import com.yandex.mapkit.geometry.SubpolylineHelper
 import com.yandex.mapkit.layers.GeoObjectTapEvent
 import com.yandex.mapkit.layers.GeoObjectTapListener
 import com.yandex.mapkit.map.*
 import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.search.*
+import com.yandex.mapkit.transport.TransportFactory
+import com.yandex.mapkit.transport.masstransit.PedestrianRouter
+import com.yandex.mapkit.transport.masstransit.Route
+import com.yandex.mapkit.transport.masstransit.SectionMetadata
+import com.yandex.mapkit.transport.masstransit.TimeOptions
 import com.yandex.runtime.Error
 import com.yandex.runtime.image.ImageProvider
 import com.yandex.runtime.network.NetworkError
 import com.yandex.runtime.network.RemoteError
+import com.yandex.mapkit.search.Session as SearchSession
+import com.yandex.mapkit.transport.masstransit.Session as MasstransitSession
 
 
-class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapListener,
-    InputListener, CameraListener {
+class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjectTapListener,
+    InputListener, CameraListener, MasstransitSession.RouteListener  {
 
     private lateinit var mapview: MapView
     private lateinit var searchManager: SearchManager
     private lateinit var startingPoint_searchEditText: EditText
     private lateinit var endPoint_searchEditText: EditText
+    private lateinit var choose_point_button: Button
+    private lateinit var mtRouter: PedestrianRouter
     private val TARGET_LOCATION = Point(59.936760, 30.314673)
     private var last_search_query = ""
+    private var starting_point: Point? = null
+    private lateinit var end_point: Point
+    private lateinit var object_point: Point
+    private var routing_is_on: Boolean = true           // установлено true, для того чтобы при
+                                                        // запуске не выполнялся поиск пустой
+                                                        // строки в методе OnPositionChanged
     //private lateinit var linearLayout: LinearLayout
     //private lateinit var linearLayout2: LinearLayout
 
@@ -70,13 +92,14 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
         super.onCreate(savedInstanceState)
 
         val MAPKIT_API_KEY: String =
-                applicationContext.assets.open("MAPKIT_KEY.txt").bufferedReader().use {
-                    it.readText() }
+            applicationContext.assets.open("MAPKIT_KEY.txt").bufferedReader().use {
+                it.readText() }
 
         MapKitFactory.setApiKey(MAPKIT_API_KEY)
 
         MapKitFactory.initialize(this)
         SearchFactory.initialize(this)
+        TransportFactory.initialize(this)
 
         setContentView(R.layout.activity_main)
         // modalBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
@@ -90,15 +113,10 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
 
         startingPoint_searchEditText = findViewById(R.id.starting_point_search_manager)
         endPoint_searchEditText = findViewById(R.id.end_point_search_manager)
-        startingPoint_searchEditText.setOnClickListener { startingPoint_searchEditText.isCursorVisible = true }
-        endPoint_searchEditText.setOnClickListener { endPoint_searchEditText.isCursorVisible = true }
-
-
-        val editTextClickListener: View.OnClickListener = View.OnClickListener { v ->
-                startingPoint_searchEditText.isCursorVisible = true
-        }
-
-        startingPoint_searchEditText.setOnClickListener(editTextClickListener)
+        startingPoint_searchEditText.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) startingPoint_searchEditText.isCursorVisible = true }
+        endPoint_searchEditText.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) endPoint_searchEditText.isCursorVisible = true }
 
 
         mapview = findViewById<View>(R.id.mapview) as MapView
@@ -113,9 +131,10 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
             Animation(Animation.Type.SMOOTH, 1F),
             null
         )
-        
-        
+
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
+        mtRouter = TransportFactory.getInstance().createPedestrianRouter()
+
 
         startingPoint_searchEditText.setOnEditorActionListener { textView, actionId, keyEvent ->
             startingPoint_searchEditText.isCursorVisible = true
@@ -125,8 +144,8 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
                 mapview.requestFocus()
 
                 klaviatura.hideSoftInputFromWindow(startingPoint_searchEditText.windowToken,
-                                                   InputMethodManager.HIDE_NOT_ALWAYS)
-                }
+                    InputMethodManager.HIDE_NOT_ALWAYS)
+            }
             false
         }
 
@@ -142,6 +161,7 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
             }
             false
         }
+
     }
 
     private fun submitQuery(query: String = "") {
@@ -196,23 +216,95 @@ class MainActivity : AppCompatActivity(), Session.SearchListener, GeoObjectTapLi
             .getItem(GeoObjectSelectionMetadata::class.java)
         if (selectionMetadata != null) {
             mapview.map.selectGeoObject(selectionMetadata.id, selectionMetadata.layerId)
-            modalBottomSheet.show(supportFragmentManager, ModalBottomSheet.TAG)
+            object_point = geoObjectTapEvent.geoObject.geometry[0].point!!
+            //submitQuery(query = "", geometry = object_point)
+            showBottomSheetDialog()
         }
+
+        /* val object_id = selectionMetadata.id
+        var rup = ResourceUrlProvider { object_id }
+        val test = rup.toString()
+        searchManager.searchByURI(rup.toString(), SearchOptions(), this) */
+
         return selectionMetadata != null
     }
+
+    private fun showBottomSheetDialog() {
+        val bottomSheetDialog: BottomSheetDialog = BottomSheetDialog(this)
+        bottomSheetDialog.setContentView(R.layout.object_description)
+
+        val choose_point_button: Button? = bottomSheetDialog.findViewById<Button>(R.id.choose_point_button)
+
+        choose_point_button?.setOnClickListener { view ->
+            choosePoints()
+            bottomSheetDialog.dismiss()
+        }
+
+        bottomSheetDialog.show()
+        // modalBottomSheet.show(supportFragmentManager, ModalBottomSheet.TAG)
+    }
+
+    private fun choosePoints() {
+        if (starting_point != null) {
+            end_point = object_point
+            val points: MutableList<RequestPoint> = ArrayList()
+
+            points.add(RequestPoint(starting_point!!, RequestPointType.WAYPOINT, null))
+            points.add(RequestPoint(end_point, RequestPointType.WAYPOINT, null))
+            mtRouter.requestRoutes(points, TimeOptions(), this)
+        } else {
+            starting_point = object_point
+        }
+    }
+
 
     override fun onMapTap(map: Map, point: Point) {
         mapview.map.deselectGeoObject()
     }
 
     override fun onMapLongTap(map: Map, point: Point) {
-        // TODO document why this method is empty
+        // TODO callback
     }
 
     override fun onCameraPositionChanged(p0: Map, p1: CameraPosition, p2: CameraUpdateReason,
                                          finished: Boolean)
     {
-        if (finished) submitQuery(last_search_query)
+        if (finished and !routing_is_on) submitQuery(last_search_query)
+    }
+
+    override fun onMasstransitRoutes(routes: MutableList<Route>) {
+        if (routes.isNotEmpty()) {
+            for (section in routes[0].sections) {
+                drawSection(
+                    section.metadata.data,
+                    SubpolylineHelper.subpolyline( routes[0].geometry, section.geometry )
+                )
+            }
+        }
+    }
+
+    private fun drawSection(data: SectionMetadata.SectionData, geometry: Polyline) {
+
+        val mapObjects = mapview.map.mapObjects
+        mapObjects.clear()
+        val polylineMapObject = mapObjects.addCollection().addPolyline(geometry)
+
+        print(data.walk?.constructions)
+        print(data.walk?.restrictedEntries)
+        print(data.walk?.viaPoints)
+
+        if (data.walk != null) {
+            polylineMapObject.strokeColor = -0x1000000 // Black
+            routing_is_on = true
+            starting_point = null
+            return
+        }
+        routing_is_on = false
+        starting_point = null
+    }
+
+    override fun onMasstransitRoutesError(p0: Error) {
+        TODO("Not yet implemented")
     }
 
 }
