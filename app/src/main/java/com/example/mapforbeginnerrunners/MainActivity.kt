@@ -45,21 +45,19 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
     private lateinit var searchManager: SearchManager
     private lateinit var startingPoint_searchEditText: EditText
     private lateinit var endPoint_searchEditText: EditText
+    private lateinit var bottomSheetDialog: BottomSheetDialog
     private lateinit var choose_point_button: Button
     private lateinit var mtRouter: PedestrianRouter
     private val TARGET_LOCATION = Point(59.936760, 30.314673)
     private var last_search_query = ""
     private var starting_point: Point? = null
-    private lateinit var end_point: Point
+    private var end_point: Point? = null
     private lateinit var object_point: Point
     private var routing_is_on: Boolean = true           // установлено true, для того чтобы при
                                                         // запуске не выполнялся поиск пустой
                                                         // строки в методе OnPositionChanged
     //private lateinit var linearLayout: LinearLayout
     //private lateinit var linearLayout2: LinearLayout
-
-    private val modalBottomSheet = ModalBottomSheet()
-    // private val modalBottomSheetBehavior = (modalBottomSheet.dialog as BottomSheetDialog).behavior
 
     // Недоделанная функция для того, чтобы 2 LinearLayouts делили экран по ширине пополам
 
@@ -102,7 +100,6 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         TransportFactory.initialize(this)
 
         setContentView(R.layout.activity_main)
-        // modalBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
 
         //linearLayout = findViewById(R.id.linearLayout)
         //linearLayout2 = findViewById(R.id.linearLayout2)
@@ -125,7 +122,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         mapview.map.addInputListener(this)
         mapview.map.addCameraListener(this)
 
-        // And to show what can be done with it, we move the camera to the center of Saint Petersburg.
+        // Move the camera to the center of Saint Petersburg.
         mapview.map.move(
             CameraPosition(TARGET_LOCATION, 17.0f, 0.0f, 0.0f),
             Animation(Animation.Type.SMOOTH, 1F),
@@ -134,6 +131,21 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
 
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
         mtRouter = TransportFactory.getInstance().createPedestrianRouter()
+
+
+        bottomSheetDialog = BottomSheetDialog(this)
+        bottomSheetDialog.setContentView(R.layout.object_description)
+        choose_point_button = bottomSheetDialog.findViewById(R.id.choose_point_button)!!
+        choose_point_button.setOnClickListener { view ->
+            choosePoints()
+            if (starting_point == null)
+                choose_point_button.setText(R.string.button_to_choose_starting_point_in_bottom_sheet)
+            else if (end_point == null && starting_point != null)
+                choose_point_button.setText(R.string.button_to_choose_end_point_in_bottom_sheet)
+            else
+                choose_point_button.setText(R.string.button_to_choose_starting_point_in_bottom_sheet)
+            bottomSheetDialog.dismiss()
+        }
 
 
         startingPoint_searchEditText.setOnEditorActionListener { textView, actionId, keyEvent ->
@@ -165,6 +177,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
     }
 
     private fun submitQuery(query: String = "") {
+        routing_is_on = false
         searchManager.submit( query,
             VisibleRegionUtils.toPolygon(mapview.map.visibleRegion),
             SearchOptions(),
@@ -218,31 +231,12 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
             mapview.map.selectGeoObject(selectionMetadata.id, selectionMetadata.layerId)
             object_point = geoObjectTapEvent.geoObject.geometry[0].point!!
             //submitQuery(query = "", geometry = object_point)
-            showBottomSheetDialog()
+            bottomSheetDialog.show()
         }
-
-        /* val object_id = selectionMetadata.id
-        var rup = ResourceUrlProvider { object_id }
-        val test = rup.toString()
-        searchManager.searchByURI(rup.toString(), SearchOptions(), this) */
 
         return selectionMetadata != null
     }
 
-    private fun showBottomSheetDialog() {
-        val bottomSheetDialog: BottomSheetDialog = BottomSheetDialog(this)
-        bottomSheetDialog.setContentView(R.layout.object_description)
-
-        val choose_point_button: Button? = bottomSheetDialog.findViewById<Button>(R.id.choose_point_button)
-
-        choose_point_button?.setOnClickListener { view ->
-            choosePoints()
-            bottomSheetDialog.dismiss()
-        }
-
-        bottomSheetDialog.show()
-        // modalBottomSheet.show(supportFragmentManager, ModalBottomSheet.TAG)
-    }
 
     private fun choosePoints() {
         if (starting_point != null) {
@@ -250,7 +244,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
             val points: MutableList<RequestPoint> = ArrayList()
 
             points.add(RequestPoint(starting_point!!, RequestPointType.WAYPOINT, null))
-            points.add(RequestPoint(end_point, RequestPointType.WAYPOINT, null))
+            points.add(RequestPoint(end_point!!, RequestPointType.WAYPOINT, null))
             mtRouter.requestRoutes(points, TimeOptions(), this)
         } else {
             starting_point = object_point
@@ -263,7 +257,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
     }
 
     override fun onMapLongTap(map: Map, point: Point) {
-        // TODO callback
+        mapview.map.deselectGeoObject()
     }
 
     override fun onCameraPositionChanged(p0: Map, p1: CameraPosition, p2: CameraUpdateReason,
@@ -303,8 +297,14 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         starting_point = null
     }
 
-    override fun onMasstransitRoutesError(p0: Error) {
-        TODO("Not yet implemented")
+    override fun onMasstransitRoutesError(error: Error) {
+        var errorMessage = getString(R.string.unknown_error_message)
+        if (error is RemoteError) {
+            errorMessage = getString(R.string.remote_error_message)
+        } else if (error is NetworkError) {
+            errorMessage = getString(R.string.network_error_message)
+        }
+        Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
     }
 
 }
