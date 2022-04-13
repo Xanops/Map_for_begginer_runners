@@ -6,7 +6,7 @@
     <string name="search_hint" />
     <string name="starting_point_searching_hint">Введите начальную точку</string>
     <string name="end_point_searching_hint">Введите конечную точку</string>
-    <string name="object_address">Nothing</string>
+    <string name="object_address">No information about this object</string>
     <string name="button_to_choose_starting_point_in_bottom_sheet">Выбрать начальную точку</string>
     <string name="button_to_choose_end_point_in_bottom_sheet">Выбрать конечную точку</string>
 </resources>

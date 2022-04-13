@@ -19,12 +19,21 @@
             android:layout_height="match_parent"
             app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
             android:orientation="vertical">
-
-            <!-- TextView
+            
+            <View
+                android:layout_width="100dp"
+                android:layout_height="5dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="15dp"
+                android:layout_gravity="center"
+                android:background="@android:color/darker_gray" />
+            
+            <TextView
                 android:id="@+id/object_address"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
-                android:text="@string/object_address" /-->
+                android:layout_height="wrap_content"
+                android:breakStrategy="simple"
+                android:text="@string/object_address" />
 
             <Button
                 android:id="@+id/choose_point_button"

@@ -2,16 +2,19 @@ package com.example.mapforbeginnerrunners
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.RequestPoint
@@ -26,20 +29,18 @@ import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.search.*
 import com.yandex.mapkit.transport.TransportFactory
-import com.yandex.mapkit.transport.masstransit.PedestrianRouter
-import com.yandex.mapkit.transport.masstransit.Route
-import com.yandex.mapkit.transport.masstransit.SectionMetadata
-import com.yandex.mapkit.transport.masstransit.TimeOptions
+import com.yandex.mapkit.transport.masstransit.*
 import com.yandex.runtime.Error
 import com.yandex.runtime.image.ImageProvider
 import com.yandex.runtime.network.NetworkError
 import com.yandex.runtime.network.RemoteError
 import com.yandex.mapkit.search.Session as SearchSession
 import com.yandex.mapkit.transport.masstransit.Session as MasstransitSession
+import com.yandex.mapkit.transport.masstransit.SummarySession as MasstransitSummarySession
 
 
 class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjectTapListener,
-    InputListener, CameraListener, MasstransitSession.RouteListener  {
+    InputListener, CameraListener, MasstransitSession.RouteListener { //, MasstransitSummarySession.SummaryListener {
 
     private lateinit var mapview: MapView
     private lateinit var searchManager: SearchManager
@@ -47,12 +48,14 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
     private lateinit var endPoint_searchEditText: EditText
     private lateinit var bottomSheetDialog: BottomSheetDialog
     private lateinit var choose_point_button: Button
-    private lateinit var mtRouter: PedestrianRouter
+    private lateinit var mtRouter: PedestrianRouter     // Пешеходный маршрутизатор
     private val TARGET_LOCATION = Point(59.936760, 30.314673)
     private var last_search_query = ""
     private var starting_point: Point? = null
     private var end_point: Point? = null
     private lateinit var object_point: Point
+    private lateinit var typeOfQuery: String
+    private lateinit var objectAddress_textView: TextView
     private var routing_is_on: Boolean = true           // установлено true, для того чтобы при
                                                         // запуске не выполнялся поиск пустой
                                                         // строки в методе OnPositionChanged
@@ -97,7 +100,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
 
         MapKitFactory.initialize(this)
         SearchFactory.initialize(this)
-        TransportFactory.initialize(this)
+        TransportFactory.initialize(this)   // Инициализация главного "завода" по построению маршрутов
 
         setContentView(R.layout.activity_main)
 
@@ -130,19 +133,19 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         )
 
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
-        mtRouter = TransportFactory.getInstance().createPedestrianRouter()
+        mtRouter = TransportFactory.getInstance().createPedestrianRouter()      // Создание образца пешеходного маршрутизатора
 
 
         bottomSheetDialog = BottomSheetDialog(this)
+
         bottomSheetDialog.setContentView(R.layout.object_description)
         choose_point_button = bottomSheetDialog.findViewById(R.id.choose_point_button)!!
+        objectAddress_textView = bottomSheetDialog.findViewById(R.id.object_address)!!
         choose_point_button.setOnClickListener { view ->
             choosePoints()
-            if (starting_point == null)
-                choose_point_button.setText(R.string.button_to_choose_starting_point_in_bottom_sheet)
-            else if (end_point == null && starting_point != null)
+            if (starting_point != null && end_point == null)
                 choose_point_button.setText(R.string.button_to_choose_end_point_in_bottom_sheet)
-            else
+            else if (starting_point != null && end_point != null)
                 choose_point_button.setText(R.string.button_to_choose_starting_point_in_bottom_sheet)
             bottomSheetDialog.dismiss()
         }
@@ -151,7 +154,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         startingPoint_searchEditText.setOnEditorActionListener { textView, actionId, keyEvent ->
             startingPoint_searchEditText.isCursorVisible = true
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                submitQuery(startingPoint_searchEditText.text.toString())
+                submitStringQuery(startingPoint_searchEditText.text.toString())
                 startingPoint_searchEditText.isCursorVisible = false
                 mapview.requestFocus()
 
@@ -164,7 +167,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         endPoint_searchEditText.setOnEditorActionListener { textView, actionId, keyEvent ->
             endPoint_searchEditText.isCursorVisible = true
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                submitQuery(endPoint_searchEditText.text.toString())
+                submitStringQuery(endPoint_searchEditText.text.toString())
                 endPoint_searchEditText.isCursorVisible = false
                 mapview.requestFocus()
 
@@ -176,7 +179,8 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
 
     }
 
-    private fun submitQuery(query: String = "") {
+    private fun submitStringQuery(query: String = "") {
+        typeOfQuery = "string"
         routing_is_on = false
         searchManager.submit( query,
             VisibleRegionUtils.toPolygon(mapview.map.visibleRegion),
@@ -186,17 +190,46 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
     }
 
     override fun onSearchResponse(response: Response) {
-        val mapObjects = mapview.map.mapObjects
-        mapObjects.clear()
+        if (typeOfQuery == "string") {
+            val mapObjects = mapview.map.mapObjects
+            mapObjects.clear()
 
-        for (searchResult in response.collection.children) {
-            val resultLocation = searchResult.obj?.geometry?.get(0)?.point
-            if (resultLocation != null) {
-                mapObjects.addPlacemark(
-                    resultLocation,
-                    ImageProvider.fromResource(this, R.drawable.search_result)
-                )
+            for (searchResult in response.collection.children) {
+                val resultLocation = searchResult.obj?.geometry?.get(0)?.point
+                if (resultLocation != null) {
+                    mapObjects.addPlacemark(
+                        resultLocation,
+                        ImageProvider.fromResource(this, R.drawable.search_result)
+                    )
+                }
             }
+        }
+        else if (typeOfQuery == "point") {
+            val address = mutableListOf(
+                response.collection.children.firstOrNull()?.obj                         // city
+                    ?.metadataContainer?.getItem(ToponymObjectMetadata::class.java)
+                    ?.address?.components
+                    ?.firstOrNull { it.kinds.contains(Address.Component.Kind.LOCALITY) }
+                    ?.name,
+                response.collection.children.firstOrNull()?.obj                         // street
+                    ?.metadataContainer
+                    ?.getItem(ToponymObjectMetadata::class.java)
+                    ?.address
+                    ?.components
+                    ?.firstOrNull { it.kinds.contains(Address.Component.Kind.STREET) }
+                    ?.name,
+                response.collection.children.firstOrNull()?.obj                         // number of
+                    ?.metadataContainer                                                 // house
+                    ?.getItem(ToponymObjectMetadata::class.java)
+                    ?.address
+                    ?.components
+                    ?.firstOrNull { it.kinds.contains(Address.Component.Kind.HOUSE) }
+                    ?.name
+            )
+            var result = ""
+            for (elem in address) if (elem != null) result += "$elem, "
+            if (result == "") objectAddress_textView.setText(R.string.object_address)
+            else objectAddress_textView.text = result.dropLast(2)
         }
     }
 
@@ -230,7 +263,10 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         if (selectionMetadata != null) {
             mapview.map.selectGeoObject(selectionMetadata.id, selectionMetadata.layerId)
             object_point = geoObjectTapEvent.geoObject.geometry[0].point!!
-            //submitQuery(query = "", geometry = object_point)
+            typeOfQuery = "point"
+            val searchOptions = SearchOptions()
+            searchOptions.searchTypes = SearchType.GEO.value
+            searchManager.submit(object_point, mapview.map.cameraPosition.zoom.toInt(), searchOptions, this)
             bottomSheetDialog.show()
         }
 
@@ -239,15 +275,17 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
 
 
     private fun choosePoints() {
-        if (starting_point != null) {
+        if (starting_point != null && end_point == null) {
             end_point = object_point
             val points: MutableList<RequestPoint> = ArrayList()
 
             points.add(RequestPoint(starting_point!!, RequestPointType.WAYPOINT, null))
             points.add(RequestPoint(end_point!!, RequestPointType.WAYPOINT, null))
             mtRouter.requestRoutes(points, TimeOptions(), this)
+            //mtRouter.requestRoutesSummary(points, TimeOptions(), this)
         } else {
             starting_point = object_point
+            end_point = null
         }
     }
 
@@ -263,7 +301,10 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
     override fun onCameraPositionChanged(p0: Map, p1: CameraPosition, p2: CameraUpdateReason,
                                          finished: Boolean)
     {
-        if (finished and !routing_is_on) submitQuery(last_search_query)
+        if (finished and !routing_is_on) {
+            typeOfQuery = "string"
+            submitStringQuery(last_search_query)
+        }
     }
 
     override fun onMasstransitRoutes(routes: MutableList<Route>) {
@@ -277,24 +318,19 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         }
     }
 
+
     private fun drawSection(data: SectionMetadata.SectionData, geometry: Polyline) {
 
         val mapObjects = mapview.map.mapObjects
         mapObjects.clear()
         val polylineMapObject = mapObjects.addCollection().addPolyline(geometry)
 
-        print(data.walk?.constructions)
-        print(data.walk?.restrictedEntries)
-        print(data.walk?.viaPoints)
-
         if (data.walk != null) {
             polylineMapObject.strokeColor = -0x1000000 // Black
             routing_is_on = true
-            starting_point = null
             return
         }
         routing_is_on = false
-        starting_point = null
     }
 
     override fun onMasstransitRoutesError(error: Error) {
@@ -306,5 +342,4 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         }
         Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
     }
-
 }
