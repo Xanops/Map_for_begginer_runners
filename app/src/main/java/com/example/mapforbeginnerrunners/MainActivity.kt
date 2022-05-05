@@ -6,14 +6,11 @@ import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.coordinatorlayout.widget.CoordinatorLayout
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
@@ -29,14 +26,16 @@ import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.search.*
 import com.yandex.mapkit.transport.TransportFactory
-import com.yandex.mapkit.transport.masstransit.*
+import com.yandex.mapkit.transport.masstransit.PedestrianRouter
+import com.yandex.mapkit.transport.masstransit.Route
+import com.yandex.mapkit.transport.masstransit.SectionMetadata
+import com.yandex.mapkit.transport.masstransit.TimeOptions
 import com.yandex.runtime.Error
 import com.yandex.runtime.image.ImageProvider
 import com.yandex.runtime.network.NetworkError
 import com.yandex.runtime.network.RemoteError
 import com.yandex.mapkit.search.Session as SearchSession
 import com.yandex.mapkit.transport.masstransit.Session as MasstransitSession
-import com.yandex.mapkit.transport.masstransit.SummarySession as MasstransitSummarySession
 
 
 class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjectTapListener,
@@ -46,7 +45,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
     private lateinit var searchManager: SearchManager
     private lateinit var startingPoint_searchEditText: EditText
     private lateinit var endPoint_searchEditText: EditText
-    private lateinit var bottomSheetDialog: BottomSheetDialog
+    private lateinit var bottomSheetBehavior_objInf: BottomSheetBehavior<LinearLayout>
     private lateinit var choose_point_button: Button
     private lateinit var mtRouter: PedestrianRouter     // Пешеходный маршрутизатор
     private val TARGET_LOCATION = Point(59.936760, 30.314673)
@@ -103,6 +102,8 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         TransportFactory.initialize(this)   // Инициализация главного "завода" по построению маршрутов
 
         setContentView(R.layout.activity_main)
+        val bottomSheetDialog_objInf: LinearLayout = findViewById(R.id.bsd_obj_info)// BottomSheet при нажатии на объект
+        bottomSheetBehavior_objInf = BottomSheetBehavior.from(bottomSheetDialog_objInf)
 
         //linearLayout = findViewById(R.id.linearLayout)
         //linearLayout2 = findViewById(R.id.linearLayout2)
@@ -135,19 +136,15 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
         mtRouter = TransportFactory.getInstance().createPedestrianRouter()      // Создание образца пешеходного маршрутизатора
 
-
-        bottomSheetDialog = BottomSheetDialog(this)
-
-        bottomSheetDialog.setContentView(R.layout.object_description)
-        choose_point_button = bottomSheetDialog.findViewById(R.id.choose_point_button)!!
-        objectAddress_textView = bottomSheetDialog.findViewById(R.id.object_address)!!
+        choose_point_button = bottomSheetDialog_objInf.findViewById(R.id.choose_point_button)
+        objectAddress_textView = bottomSheetDialog_objInf.findViewById(R.id.object_address)
         choose_point_button.setOnClickListener { view ->
             choosePoints()
             if (starting_point != null && end_point == null)
                 choose_point_button.setText(R.string.button_to_choose_end_point_in_bottom_sheet)
             else if (starting_point != null && end_point != null)
                 choose_point_button.setText(R.string.button_to_choose_starting_point_in_bottom_sheet)
-            bottomSheetDialog.dismiss()
+            bottomSheetBehavior_objInf.state = BottomSheetBehavior.STATE_HIDDEN
         }
 
 
@@ -267,7 +264,7 @@ class MainActivity : AppCompatActivity(), SearchSession.SearchListener, GeoObjec
             val searchOptions = SearchOptions()
             searchOptions.searchTypes = SearchType.GEO.value
             searchManager.submit(object_point, mapview.map.cameraPosition.zoom.toInt(), searchOptions, this)
-            bottomSheetDialog.show()
+            bottomSheetBehavior_objInf.state = BottomSheetBehavior.STATE_COLLAPSED
         }
 
         return selectionMetadata != null
